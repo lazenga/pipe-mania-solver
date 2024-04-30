@@ -7,6 +7,7 @@
 # 102598 Alexandre Miguel Piedade Ramos
 
 import sys
+import numpy as np
 from search import (
     Problem,
     Node,
@@ -35,38 +36,106 @@ class PipeManiaState:
 class Board:
     """Representação interna de um tabuleiro de PipeMania."""
 
+    V_TL, V_TR, V_BL, V_BR = 'VC', 'VD', 'VE', 'VB'
+    F_T, F_B, F_L, F_R = 'FC', 'FB', 'FE', 'FD'
+    L_V, L_H = 'LV', 'LH'
+    B_T, B_B, B_L, B_R = 'BC', 'BB', 'BE', 'BD'
+    
+    def __init__(self, matrix, size) -> None:
+        self.board = matrix
+        self.size = size
+        self.locked = []
+
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
-        # TODO
-        pass
+        return self.board[row, col]
+    
+    def set_value(self, row, col, value):
+        """Modifica o valor guardado em (row, col) para value."""
+        self.board[row, col] = value
 
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
-        # TODO
-        pass
+
+        return None if row == 0 else self.board[row - 1, col], \
+            None if row == self.size - 1 else self.board[row + 1, col]
 
     def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente à esquerda e à direita,
         respectivamente."""
+
+        return None if col == 0 else self.board[row, col - 1], \
+            None if col == self.size - 1 else self.board[row, col + 1]
+
+    def simplify_sides(self):
+        """
+        Simplifica os lados da board.
+        """
+        corners = [(0, 0), (0, self.size - 1), (self.size - 1, 0), (self.size - 1, self.size - 1)]
+
+        for corner, (row, col) in enumerate(corners):
+            if self.board[row, col][0] == 'V':
+                value = self.V_BR if corner == 0 else self.V_BL \
+                                    if corner == 1 else self.V_TR if corner == 2 else self.V_TL
+                self.set_value(row, col, value)
+                self.locked.append((row, col))
+                
+        for row in range(self.size):
+            if row == 0 or row == self.size - 1:
+                for col in range(1, self.size - 1):
+                    if self.board[row, col][0] == 'L' or self.board[row, col][0] == 'B':
+                        value = self.L_H if self.board[row, col][0] == 'L' else self.B_B if row == 0 else self.B_T
+                        self.set_value(row, col, value)
+                        self.locked.append((row, col))
+            else:
+                if self.board[row, 0][0] == 'L' or self.board[row, 0][0] == 'B':
+                    value = self.L_V if self.board[row, 0][0] == 'L' else self.B_R
+                    self.set_value(row, 0, value)
+                    self.locked.append((row, 0))
+
+                if self.board[row, self.size - 1][0] == 'L' or self.board[row, self.size - 1][0] == 'B':
+                    value = self.L_V if self.board[row, self.size - 1][0] == 'L' else self.B_L
+                    self.set_value(row, self.size - 1, value)
+                    self.locked.append((row, self.size - 1))
+    
+    def deep_copy(self):
+        """
+        Devolve uma cópia da board.
+        """
+        copy = np.array([row.copy() for row in self.board])
+
+        return Board(copy, self.size)
+    
+    def is_objective(self):
+        """
+        Verifica se a board é uma solução.
+        """
         # TODO
         pass
+
+    def __str__(self):
+        return '\n'.join(['\t'.join(row) for row in self.board]) + '\n'
 
     @staticmethod
     def parse_instance():
         """Lê o test do standard input (stdin) que é passado como argumento
         e retorna uma instância da classe Board.
-
-        Por exemplo:
-            $ python3 pipe.py < test-01.txt
-
-            > from sys import stdin
-            > line = stdin.readline().split()
         """
-        # TODO
-        pass
+        line = sys.stdin.readline().strip().split('\t')
+        
+        n = len(line)
+        first = True
+        matrix = np.full((n, n), None)
 
-    # TODO: outros metodos da classe
+        for i in range(n):
+            if not first:
+                line = sys.stdin.readline().strip().split('\t')
+            
+            matrix[i] = line
+            first = False
+
+        return Board(matrix, n)
 
 
 class PipeMania(Problem):
@@ -105,8 +174,12 @@ class PipeMania(Problem):
 
 
 if __name__ == "__main__":
+    board = Board.parse_instance()
+
+    board.simplify_sides()
+    print(board)
+    
     # TODO:
-    # Ler o ficheiro do standard input,
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
