@@ -12,12 +12,12 @@ fi
 
 mkdir "$temp_dir"
 
-for i in {1..9}; do
+for i in {1..10}; do
     # Input and expected output files
     tests_path="tests"
-    input_file="$tests_path/test-0$i.txt"
-    expected_output_file="$tests_path/test-0$i.out"
-    temp_output_file="$temp_dir/test-0$i.out"
+    input_file="$tests_path/test-$i.txt"
+    expected_output_file="$tests_path/test-$i.out"
+    temp_output_file="$temp_dir/test-$i.out"
 
     output=$(python3 pipe.py < "$input_file")
     echo "$output" > "$temp_output_file"
