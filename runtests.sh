@@ -12,7 +12,8 @@ fi
 
 mkdir "$temp_dir"
 
-for i in {1..10}; do
+for i in {1..19}; do
+    rm -r __pycache__
     # Input and expected output files
     tests_path="tests"
     input_file="$tests_path/test-$i.txt"
