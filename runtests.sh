@@ -19,19 +19,20 @@ for i in {1..10}; do
     expected_output_file="$tests_path/test-$i.out"
     temp_output_file="$temp_dir/test-$i.out"
 
-    output=$(python3 pipe.py < "$input_file")
-    echo "$output" > "$temp_output_file"
+    # Execute and get the real time
+    exec_time=$(time (python3 pipe.py < "$input_file" > "$temp_output_file") 2>&1)
+    exec_time=$(echo "$exec_time" | grep real | awk '{print $2}')
 
     # Compare the output with the expected output
     echo "---------------"
-    if [ "$output" = "$(cat $expected_output_file)" ]; then
-        echo -e "${green}Test $i: PASSED${end_color}"
+    if [ "$(cat "$temp_output_file")" = "$(cat "$expected_output_file")" ]; then
+        echo -e "${green}Test $i: PASSED${end_color} (Execution Time: $exec_time)"
     else
-        echo -e "${red}Test $i: FAILED${end_color}"
+        echo -e "${red}Test $i: FAILED${end_color} (Execution Time: $exec_time)"
         echo -e "${red}Expected output:${end_color}"
         cat "$expected_output_file"
         echo -e "${red}Actual output:${end_color}"
-        echo "$output"
+        cat "$temp_output_file"
     fi
 done
 
