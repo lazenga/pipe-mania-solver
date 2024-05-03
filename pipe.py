@@ -43,7 +43,7 @@ class Board:
     TOP = {V_TL, V_TR, F_T, L_V, B_T, B_R, B_L}
     DOWN = {V_DL, V_DR, F_D, L_V, B_D, B_R, B_L}
     
-    def __init__(self, matrix, size, total_con, not_locked, locked = []) -> None:
+    def __init__(self, matrix, size, total_con, not_locked, locked = set()) -> None:
         self.board = matrix
         self.size = size
         self.locked = locked
@@ -60,7 +60,7 @@ class Board:
         """Modifica o valor guardado em (row, col) para value."""
         before = self.get_num_connections(row, col)
         self.board[row, col] = value
-        self.locked.append((row, col))
+        self.locked.add((row, col))
         self.not_locked.remove((row, col))
         after = self.get_num_connections(row, col)
         self.num_con += (after - before) * 2
@@ -82,7 +82,7 @@ class Board:
                 value = self.V_DR if corner == 0 else self.V_DL \
                                     if corner == 1 else self.V_TR if corner == 2 else self.V_TL
                 self.set_value(row, col, value)
-                self.locked.append((row, col))
+                self.locked.add((row, col))
                 
         for row in range(self.size):
             if row == 0 or row == self.size - 1:
@@ -90,17 +90,17 @@ class Board:
                     if self.board[row, col][0] == 'L' or self.board[row, col][0] == 'B':
                         value = self.L_H if self.board[row, col][0] == 'L' else self.B_D if row == 0 else self.B_T
                         self.set_value(row, col, value)
-                        self.locked.append((row, col))
+                        self.locked.add((row, col))
             else:
                 if self.board[row, 0][0] == 'L' or self.board[row, 0][0] == 'B':
                     value = self.L_V if self.board[row, 0][0] == 'L' else self.B_R
                     self.set_value(row, 0, value)
-                    self.locked.append((row, 0))
+                    self.locked.add((row, 0))
 
                 if self.board[row, self.size - 1][0] == 'L' or self.board[row, self.size - 1][0] == 'B':
                     value = self.L_V if self.board[row, self.size - 1][0] == 'L' else self.B_L
                     self.set_value(row, self.size - 1, value)
-                    self.locked.append((row, self.size - 1))
+                    self.locked.add((row, self.size - 1))
 
     def action_finder(self):    #TODO simplify
         """Procura as próximas ações."""
@@ -111,125 +111,125 @@ class Board:
             curr = self.get_value(row, col)
             adj_h = self.adjacent_horizontal_pos(row, col)
             adj_v = self.adjacent_vertical_pos(row, col)
-            possible = [self.V_DL, self.V_DR, self.V_TL, self.V_TR] \
-                if curr.startswith('V') else [self.B_T, self.B_D, self.B_L, self.B_R] \
-                if curr.startswith('B') else [self.F_D, self.F_T, self.F_L, self.F_R] \
-                if curr.startswith('F') else [self.L_V, self.L_H]
+            possible = {self.V_DL, self.V_DR, self.V_TL, self.V_TR} \
+                if curr.startswith('V') else {self.B_T, self.B_D, self.B_L, self.B_R} \
+                if curr.startswith('B') else {self.F_D, self.F_T, self.F_L, self.F_R} \
+                if curr.startswith('F') else {self.L_V, self.L_H}
 
             if adj_h[0] in self.locked and self.board[adj_h[0][0], adj_h[0][1]] in self.RIGHT:
                 if curr.startswith('V'):
-                    temp = [self.V_DL] if row == 0 else [self.V_TL] if row == self.size - 1 else [self.V_DL, self.V_TL]
-                    possible = list(set(possible).intersection(temp))
+                    temp = {self.V_DL} if row == 0 else {self.V_TL} if row == self.size - 1 else {self.V_DL, self.V_TL}
+                    possible = possible.intersection(temp)
 
                 if curr.startswith('B'):
-                    possible = list(set(possible).intersection([self.B_D, self.B_L, self.B_T]))
+                    possible = possible.intersection({self.B_D, self.B_L, self.B_T})
 
                 if curr.startswith('L'):
-                    possible = list(set(possible).intersection([self.L_H]))
+                    possible = possible.intersection({self.L_H})
                 
                 if curr.startswith('F'):
-                    possible = list(set(possible).intersection([self.F_L]))
+                    possible = possible.intersection({self.F_L})
 
             elif adj_h[0] in self.locked:
                 if curr.startswith('V'):
-                    temp = [self.V_DR] if row == 0 else [self.V_TR] if row == self.size - 1 else [self.V_DR, self.V_TR]
-                    possible = list(set(possible).intersection(temp))
+                    temp = {self.V_DR} if row == 0 else {self.V_TR} if row == self.size - 1 else {self.V_DR, self.V_TR}
+                    possible = possible.intersection(temp)
 
                 if curr.startswith('B'):
-                    possible = list(set(possible).intersection([self.B_R]))
+                    possible = possible.intersection({self.B_R})
 
                 if curr.startswith('L'):
-                    possible = list(set(possible).intersection([self.L_V]))
+                    possible = possible.intersection({self.L_V})
                 
                 if curr.startswith('F'):
-                    possible = list(set(possible).intersection([self.F_T, self.F_D, self.F_R]))
+                    possible = possible.intersection({self.F_T, self.F_D, self.F_R})
 
             if adj_h[1] in self.locked and self.board[adj_h[1][0], adj_h[1][1]] in self.LEFT:
                 if curr.startswith('V'):
-                    temp = [self.V_DR] if row == 0 else [self.V_TR] if row == self.size - 1 else [self.V_DR, self.V_TR]
-                    possible = list(set(possible).intersection(temp))
+                    temp = {self.V_DR} if row == 0 else {self.V_TR} if row == self.size - 1 else {self.V_DR, self.V_TR}
+                    possible = possible.intersection(temp)
                 
                 if curr.startswith('B'):
-                    possible = list(set(possible).intersection([self.B_D, self.B_R, self.B_T]))
+                    possible = possible.intersection({self.B_D, self.B_R, self.B_T})
                 
                 if curr.startswith('L'):
-                    possible = list(set(possible).intersection([self.L_H]))
+                    possible = possible.intersection({self.L_H})
                 
                 if curr.startswith('F'):
-                    possible = list(set(possible).intersection([self.F_R]))
+                    possible = possible.intersection({self.F_R})
 
             elif adj_h[1] in self.locked:
                 if curr.startswith('V'):
-                    temp = [self.V_DL] if row == 0 else [self.V_TL] if row == self.size - 1 else [self.V_DL, self.V_TL]
-                    possible = list(set(possible).intersection(temp))
+                    temp = {self.V_DL} if row == 0 else {self.V_TL} if row == self.size - 1 else {self.V_DL, self.V_TL}
+                    possible = possible.intersection(temp)
 
                 if curr.startswith('B'):
-                    possible = list(set(possible).intersection([self.B_L]))
+                    possible = possible.intersection({self.B_L})
 
                 if curr.startswith('L'):
-                    possible = list(set(possible).intersection([self.L_V]))
+                    possible = possible.intersection({self.L_V})
                 
                 if curr.startswith('F'):
-                    possible = list(set(possible).intersection([self.F_T, self.F_D, self.F_L]))
+                    possible = possible.intersection({self.F_T, self.F_D, self.F_L})
 
             if adj_v[0] in self.locked and self.board[adj_v[0][0], adj_v[0][1]] in self.DOWN:
                 if curr.startswith('V'):
-                    temp = [self.V_TR] if col == 0 else [self.V_TL] if col == self.size - 1 else [self.V_TR, self.V_TL]
-                    possible = list(set(possible).intersection(temp))
+                    temp = {self.V_TR} if col == 0 else {self.V_TL} if col == self.size - 1 else {self.V_TR, self.V_TL}
+                    possible = possible.intersection(temp)
                 
                 if curr.startswith('B'):
-                    possible = list(set(possible).intersection([self.B_T, self.B_R, self.B_L]))
+                    possible = possible.intersection({self.B_T, self.B_R, self.B_L})
                 
                 if curr.startswith('L'):
-                    possible = list(set(possible).intersection([self.L_V]))
+                    possible = possible.intersection({self.L_V})
                 
                 if curr.startswith('F'):
-                    possible = list(set(possible).intersection([self.F_T]))
+                    possible = possible.intersection({self.F_T})
 
             elif adj_v[0] in self.locked:
                 if curr.startswith('V'):
-                    temp = [self.V_DR] if col == 0 else [self.V_DL] if col == self.size - 1 else [self.V_DR, self.V_DL]
-                    possible = list(set(possible).intersection(temp))
+                    temp = {self.V_DR} if col == 0 else {self.V_DL} if col == self.size - 1 else {self.V_DR, self.V_DL}
+                    possible = possible.intersection(temp)
 
                 if curr.startswith('B'):
-                    possible = list(set(possible).intersection([self.B_D]))
+                    possible = possible.intersection({self.B_D})
 
                 if curr.startswith('L'):
-                    possible = list(set(possible).intersection([self.L_H]))
+                    possible = possible.intersection({self.L_H})
                 
                 if curr.startswith('F'):
-                    possible = list(set(possible).intersection([self.F_L, self.F_D, self.F_R]))
+                    possible = possible.intersection({self.F_L, self.F_D, self.F_R})
 
             if adj_v[1] in self.locked and self.board[adj_v[1][0], adj_v[1][1]] in self.TOP:
                 if curr.startswith('V'):
-                    temp = [self.V_DR] if col == 0 else [self.V_DL] if col == self.size - 1 else [self.V_DR, self.V_DL]
-                    possible = list(set(possible).intersection(temp))
+                    temp = {self.V_DR} if col == 0 else {self.V_DL} if col == self.size - 1 else {self.V_DR, self.V_DL}
+                    possible = possible.intersection(temp)
                 
                 if curr.startswith('B'):
-                    possible = list(set(possible).intersection([self.B_D, self.B_R, self.B_L]))
+                    possible = possible.intersection({self.B_D, self.B_R, self.B_L})
                 
                 if curr.startswith('L'):
-                    possible = list(set(possible).intersection([self.L_V]))
+                    possible = possible.intersection({self.L_V})
                 
                 if curr.startswith('F'):
-                    possible = list(set(possible).intersection([self.F_D]))
+                    possible = possible.intersection({self.F_D})
 
             elif adj_v[1] in self.locked:
                 if curr.startswith('V'):
-                    temp = [self.V_TR] if col == 0 else [self.V_TL] if col == self.size - 1 else [self.V_TR, self.V_TL]
-                    possible = list(set(possible).intersection(temp))
+                    temp = {self.V_TR} if col == 0 else {self.V_TL} if col == self.size - 1 else {self.V_TR, self.V_TL}
+                    possible = possible.intersection(temp)
 
                 if curr.startswith('B'):
-                    possible = list(set(possible).intersection([self.B_T]))
+                    possible = possible.intersection({self.B_T})
 
                 if curr.startswith('L'):
-                    possible = list(set(possible).intersection([self.L_H]))
+                    possible = possible.intersection({self.L_H})
                 
                 if curr.startswith('F'):
-                    possible = list(set(possible).intersection([self.F_T, self.F_L, self.F_R]))
+                    possible = possible.intersection({self.F_T, self.F_L, self.F_R})
 
             if len(possible) == 1:
-                return [(row, col, possible[0])]
+                return [(row, col, possible.pop())]
             
             if self.simplified:
                 return [(row, col, piece) for piece in possible]
@@ -285,7 +285,7 @@ class Board:
             matrix.append(pieces)
 
         matrix = np.array(matrix)
-        not_locked = [(row, col) for row in range(len(matrix)) for col in range(len(matrix))]
+        not_locked = set([(row, col) for row in range(len(matrix)) for col in range(len(matrix))])
 
         return Board(matrix, len(matrix), total_con, not_locked)
 
