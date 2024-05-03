@@ -43,13 +43,13 @@ class Board:
     TOP = {V_TL, V_TR, F_T, L_V, B_T, B_R, B_L}
     DOWN = {V_DL, V_DR, F_D, L_V, B_D, B_R, B_L}
     
-    def __init__(self, matrix, size, total_con, not_locked, locked = set()) -> None:
+    def __init__(self, matrix, size, total_con, not_locked, simplified = False, locked = set()) -> None:
         self.board = matrix
         self.size = size
         self.locked = locked
         self.not_locked = not_locked
         self.total_con = total_con
-        self.simplified = False
+        self.simplified = simplified
         self.num_con = self.count_connected()
 
     def get_value(self, row: int, col: int) -> str:
@@ -73,7 +73,7 @@ class Board:
         """Devolve as posições adjacentes horizontais."""
         return (row, None if col == 0 else col - 1), (row, None if col == self.size - 1 else col + 1)
 
-    def simplify_sides(self):
+    def simplify_board(self):
         """Simplifica os lados da board."""
         corners = [(0, 0), (0, self.size - 1), (self.size - 1, 0), (self.size - 1, self.size - 1)]
 
@@ -101,6 +101,23 @@ class Board:
                     value = self.L_V if self.board[row, self.size - 1][0] == 'L' else self.B_L
                     self.set_value(row, self.size - 1, value)
                     self.locked.add((row, self.size - 1))
+        
+        modified = True
+        while modified:
+            modified = False
+            not_locked = list(self.not_locked)
+            for row, col in not_locked:
+                adj_h = self.adjacent_horizontal_pos(row, col)
+                adj_v = self.adjacent_vertical_pos(row, col)
+                possible = self.get_orientations((row, col), adj_h, adj_v)
+
+                if len(possible) == 1:
+                    self.set_value(row, col, possible.pop())
+                    modified = True
+        
+        self.simplified = True
+        self.not_locked = sorted(self.not_locked)
+
 
     def get_orientations(self, pos, adj_h, adj_v):      #TODO simplify
         """Devolve as possiveis orientações da peça."""
@@ -227,28 +244,17 @@ class Board:
 
     def action_finder(self):
         """Procura as próximas ações."""
-        actions = []
-        first = True
+        if len(self.not_locked) == 0:
+            return []
+        
+        row, col = self.not_locked[0]
 
-        for row, col in self.not_locked:
-            adj_h = self.adjacent_horizontal_pos(row, col)
-            adj_v = self.adjacent_vertical_pos(row, col)
+        adj_h = self.adjacent_horizontal_pos(row, col)
+        adj_v = self.adjacent_vertical_pos(row, col)
             
-            possible = self.get_orientations((row, col), adj_h, adj_v)
+        possible = self.get_orientations((row, col), adj_h, adj_v)
 
-            if len(possible) == 1:
-                return [(row, col, possible.pop())]
-            
-            if self.simplified:
-                return [(row, col, piece) for piece in possible]
-            
-            if first:
-                actions = [(row, col, piece) for piece in possible]
-                first = False
-
-        self.simplified = True
-
-        return actions
+        return [(row, col, piece) for piece in possible]
     
     def get_num_connections(self, row, col) -> int:
         """Devolve o número de entradas conectadas da peça dada."""
@@ -271,7 +277,7 @@ class Board:
         """Devolve uma cópia da board."""
         copy = np.array([row.copy() for row in self.board])
 
-        return Board(copy, self.size, self.total_con, self.not_locked.copy(), self.locked.copy())
+        return Board(copy, self.size, self.total_con, self.not_locked.copy(), self.simplified, self.locked.copy())
     
     def is_objective(self):     #TODO implement to check if it only has 1 island
         """Verifica se a board é uma solução."""
@@ -302,7 +308,7 @@ class PipeMania(Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
         self.initial = PipeManiaState(board)
-        self.initial.board.simplify_sides()
+        self.initial.board.simplify_board()
 
     def actions(self, state: PipeManiaState):
         """Retorna uma lista de ações que podem ser executadas a
@@ -324,6 +330,7 @@ class PipeMania(Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
+        #print(state.board.total_con - state.board.num_con)
         return state.board.is_objective()
 
     def h(self, node: Node):
