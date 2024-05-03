@@ -102,131 +102,139 @@ class Board:
                     self.set_value(row, self.size - 1, value)
                     self.locked.add((row, self.size - 1))
 
-    def action_finder(self):    #TODO simplify
+    def get_orientations(self, pos, adj_h, adj_v):      #TODO simplify
+        """Devolve as possiveis orientações da peça."""
+        row, col = pos
+        curr = self.get_value(row, col)
+        possible = {self.V_DL, self.V_DR, self.V_TL, self.V_TR} \
+                if curr.startswith('V') else {self.B_T, self.B_D, self.B_L, self.B_R} \
+                if curr.startswith('B') else {self.F_D, self.F_T, self.F_L, self.F_R} \
+                if curr.startswith('F') else {self.L_V, self.L_H}
+
+        if adj_h[0] in self.locked and self.board[adj_h[0][0], adj_h[0][1]] in self.RIGHT:
+            if curr.startswith('V'):
+                temp = {self.V_DL} if row == 0 else {self.V_TL} if row == self.size - 1 else {self.V_DL, self.V_TL}
+                possible = possible.intersection(temp)
+
+            if curr.startswith('B'):
+                possible = possible.intersection({self.B_D, self.B_L, self.B_T})
+
+            if curr.startswith('L'):
+                possible = possible.intersection({self.L_H})
+            
+            if curr.startswith('F'):
+                possible = possible.intersection({self.F_L})
+
+        elif adj_h[0] in self.locked:
+            if curr.startswith('V'):
+                temp = {self.V_DR} if row == 0 else {self.V_TR} if row == self.size - 1 else {self.V_DR, self.V_TR}
+                possible = possible.intersection(temp)
+
+            if curr.startswith('B'):
+                possible = possible.intersection({self.B_R})
+
+            if curr.startswith('L'):
+                possible = possible.intersection({self.L_V})
+            
+            if curr.startswith('F'):
+                possible = possible.intersection({self.F_T, self.F_D, self.F_R})
+
+        if adj_h[1] in self.locked and self.board[adj_h[1][0], adj_h[1][1]] in self.LEFT:
+            if curr.startswith('V'):
+                temp = {self.V_DR} if row == 0 else {self.V_TR} if row == self.size - 1 else {self.V_DR, self.V_TR}
+                possible = possible.intersection(temp)
+            
+            if curr.startswith('B'):
+                possible = possible.intersection({self.B_D, self.B_R, self.B_T})
+            
+            if curr.startswith('L'):
+                possible = possible.intersection({self.L_H})
+            
+            if curr.startswith('F'):
+                possible = possible.intersection({self.F_R})
+
+        elif adj_h[1] in self.locked:
+            if curr.startswith('V'):
+                temp = {self.V_DL} if row == 0 else {self.V_TL} if row == self.size - 1 else {self.V_DL, self.V_TL}
+                possible = possible.intersection(temp)
+
+            if curr.startswith('B'):
+                possible = possible.intersection({self.B_L})
+
+            if curr.startswith('L'):
+                possible = possible.intersection({self.L_V})
+            
+            if curr.startswith('F'):
+                possible = possible.intersection({self.F_T, self.F_D, self.F_L})
+
+        if adj_v[0] in self.locked and self.board[adj_v[0][0], adj_v[0][1]] in self.DOWN:
+            if curr.startswith('V'):
+                temp = {self.V_TR} if col == 0 else {self.V_TL} if col == self.size - 1 else {self.V_TR, self.V_TL}
+                possible = possible.intersection(temp)
+            
+            if curr.startswith('B'):
+                possible = possible.intersection({self.B_T, self.B_R, self.B_L})
+            
+            if curr.startswith('L'):
+                possible = possible.intersection({self.L_V})
+            
+            if curr.startswith('F'):
+                possible = possible.intersection({self.F_T})
+
+        elif adj_v[0] in self.locked:
+            if curr.startswith('V'):
+                temp = {self.V_DR} if col == 0 else {self.V_DL} if col == self.size - 1 else {self.V_DR, self.V_DL}
+                possible = possible.intersection(temp)
+
+            if curr.startswith('B'):
+                possible = possible.intersection({self.B_D})
+
+            if curr.startswith('L'):
+                possible = possible.intersection({self.L_H})
+            
+            if curr.startswith('F'):
+                possible = possible.intersection({self.F_L, self.F_D, self.F_R})
+
+        if adj_v[1] in self.locked and self.board[adj_v[1][0], adj_v[1][1]] in self.TOP:
+            if curr.startswith('V'):
+                temp = {self.V_DR} if col == 0 else {self.V_DL} if col == self.size - 1 else {self.V_DR, self.V_DL}
+                possible = possible.intersection(temp)
+            
+            if curr.startswith('B'):
+                possible = possible.intersection({self.B_D, self.B_R, self.B_L})
+            
+            if curr.startswith('L'):
+                possible = possible.intersection({self.L_V})
+            
+            if curr.startswith('F'):
+                possible = possible.intersection({self.F_D})
+
+        elif adj_v[1] in self.locked:
+            if curr.startswith('V'):
+                temp = {self.V_TR} if col == 0 else {self.V_TL} if col == self.size - 1 else {self.V_TR, self.V_TL}
+                possible = possible.intersection(temp)
+
+            if curr.startswith('B'):
+                possible = possible.intersection({self.B_T})
+
+            if curr.startswith('L'):
+                possible = possible.intersection({self.L_H})
+            
+            if curr.startswith('F'):
+                possible = possible.intersection({self.F_T, self.F_L, self.F_R})
+        
+        return possible
+
+    def action_finder(self):
         """Procura as próximas ações."""
         actions = []
         first = True
 
         for row, col in self.not_locked:
-            curr = self.get_value(row, col)
             adj_h = self.adjacent_horizontal_pos(row, col)
             adj_v = self.adjacent_vertical_pos(row, col)
-            possible = {self.V_DL, self.V_DR, self.V_TL, self.V_TR} \
-                if curr.startswith('V') else {self.B_T, self.B_D, self.B_L, self.B_R} \
-                if curr.startswith('B') else {self.F_D, self.F_T, self.F_L, self.F_R} \
-                if curr.startswith('F') else {self.L_V, self.L_H}
-
-            if adj_h[0] in self.locked and self.board[adj_h[0][0], adj_h[0][1]] in self.RIGHT:
-                if curr.startswith('V'):
-                    temp = {self.V_DL} if row == 0 else {self.V_TL} if row == self.size - 1 else {self.V_DL, self.V_TL}
-                    possible = possible.intersection(temp)
-
-                if curr.startswith('B'):
-                    possible = possible.intersection({self.B_D, self.B_L, self.B_T})
-
-                if curr.startswith('L'):
-                    possible = possible.intersection({self.L_H})
-                
-                if curr.startswith('F'):
-                    possible = possible.intersection({self.F_L})
-
-            elif adj_h[0] in self.locked:
-                if curr.startswith('V'):
-                    temp = {self.V_DR} if row == 0 else {self.V_TR} if row == self.size - 1 else {self.V_DR, self.V_TR}
-                    possible = possible.intersection(temp)
-
-                if curr.startswith('B'):
-                    possible = possible.intersection({self.B_R})
-
-                if curr.startswith('L'):
-                    possible = possible.intersection({self.L_V})
-                
-                if curr.startswith('F'):
-                    possible = possible.intersection({self.F_T, self.F_D, self.F_R})
-
-            if adj_h[1] in self.locked and self.board[adj_h[1][0], adj_h[1][1]] in self.LEFT:
-                if curr.startswith('V'):
-                    temp = {self.V_DR} if row == 0 else {self.V_TR} if row == self.size - 1 else {self.V_DR, self.V_TR}
-                    possible = possible.intersection(temp)
-                
-                if curr.startswith('B'):
-                    possible = possible.intersection({self.B_D, self.B_R, self.B_T})
-                
-                if curr.startswith('L'):
-                    possible = possible.intersection({self.L_H})
-                
-                if curr.startswith('F'):
-                    possible = possible.intersection({self.F_R})
-
-            elif adj_h[1] in self.locked:
-                if curr.startswith('V'):
-                    temp = {self.V_DL} if row == 0 else {self.V_TL} if row == self.size - 1 else {self.V_DL, self.V_TL}
-                    possible = possible.intersection(temp)
-
-                if curr.startswith('B'):
-                    possible = possible.intersection({self.B_L})
-
-                if curr.startswith('L'):
-                    possible = possible.intersection({self.L_V})
-                
-                if curr.startswith('F'):
-                    possible = possible.intersection({self.F_T, self.F_D, self.F_L})
-
-            if adj_v[0] in self.locked and self.board[adj_v[0][0], adj_v[0][1]] in self.DOWN:
-                if curr.startswith('V'):
-                    temp = {self.V_TR} if col == 0 else {self.V_TL} if col == self.size - 1 else {self.V_TR, self.V_TL}
-                    possible = possible.intersection(temp)
-                
-                if curr.startswith('B'):
-                    possible = possible.intersection({self.B_T, self.B_R, self.B_L})
-                
-                if curr.startswith('L'):
-                    possible = possible.intersection({self.L_V})
-                
-                if curr.startswith('F'):
-                    possible = possible.intersection({self.F_T})
-
-            elif adj_v[0] in self.locked:
-                if curr.startswith('V'):
-                    temp = {self.V_DR} if col == 0 else {self.V_DL} if col == self.size - 1 else {self.V_DR, self.V_DL}
-                    possible = possible.intersection(temp)
-
-                if curr.startswith('B'):
-                    possible = possible.intersection({self.B_D})
-
-                if curr.startswith('L'):
-                    possible = possible.intersection({self.L_H})
-                
-                if curr.startswith('F'):
-                    possible = possible.intersection({self.F_L, self.F_D, self.F_R})
-
-            if adj_v[1] in self.locked and self.board[adj_v[1][0], adj_v[1][1]] in self.TOP:
-                if curr.startswith('V'):
-                    temp = {self.V_DR} if col == 0 else {self.V_DL} if col == self.size - 1 else {self.V_DR, self.V_DL}
-                    possible = possible.intersection(temp)
-                
-                if curr.startswith('B'):
-                    possible = possible.intersection({self.B_D, self.B_R, self.B_L})
-                
-                if curr.startswith('L'):
-                    possible = possible.intersection({self.L_V})
-                
-                if curr.startswith('F'):
-                    possible = possible.intersection({self.F_D})
-
-            elif adj_v[1] in self.locked:
-                if curr.startswith('V'):
-                    temp = {self.V_TR} if col == 0 else {self.V_TL} if col == self.size - 1 else {self.V_TR, self.V_TL}
-                    possible = possible.intersection(temp)
-
-                if curr.startswith('B'):
-                    possible = possible.intersection({self.B_T})
-
-                if curr.startswith('L'):
-                    possible = possible.intersection({self.L_H})
-                
-                if curr.startswith('F'):
-                    possible = possible.intersection({self.F_T, self.F_L, self.F_R})
+            
+            possible = self.get_orientations((row, col), adj_h, adj_v)
 
             if len(possible) == 1:
                 return [(row, col, possible.pop())]
