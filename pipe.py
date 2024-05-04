@@ -43,13 +43,15 @@ class Board:
     TOP = {V_TL, V_TR, F_T, L_V, B_T, B_R, B_L}
     DOWN = {V_DL, V_DR, F_D, L_V, B_D, B_R, B_L}
     
-    def __init__(self, matrix, size, total_con, not_locked, simplified = False, locked = set()) -> None:
+    def __init__(self, matrix, size, total_con, not_locked, num_islands = 0, islands = {}, simplified = False, locked = set()) -> None:
         self.board = matrix
         self.size = size
         self.locked = locked
         self.not_locked = not_locked
         self.total_con = total_con
         self.simplified = simplified
+        self.islands = islands
+        self.num_islands = num_islands
         self.num_con = self.count_connected()
 
     def get_value(self, row: int, col: int) -> str:
@@ -118,7 +120,6 @@ class Board:
         self.simplified = True
         self.not_locked = sorted(self.not_locked)
 
-
     def get_orientations(self, pos, adj_h, adj_v):      #TODO simplify
         """Devolve as possiveis orientações da peça."""
         row, col = pos
@@ -141,6 +142,8 @@ class Board:
             
             if curr.startswith('F'):
                 possible = possible.intersection({self.F_L})
+                if self.board[adj_h[0][0], adj_h[0][1]].startswith('F'):
+                    possible = set()
 
         elif adj_h[0] in self.locked:
             if curr.startswith('V'):
@@ -169,6 +172,8 @@ class Board:
             
             if curr.startswith('F'):
                 possible = possible.intersection({self.F_R})
+                if self.board[adj_h[1][0], adj_h[1][1]].startswith('F'):
+                    possible = set()
 
         elif adj_h[1] in self.locked:
             if curr.startswith('V'):
@@ -197,6 +202,8 @@ class Board:
             
             if curr.startswith('F'):
                 possible = possible.intersection({self.F_T})
+                if self.board[adj_v[0][0], adj_v[0][1]].startswith('F'):
+                    possible = set()
 
         elif adj_v[0] in self.locked:
             if curr.startswith('V'):
@@ -225,6 +232,8 @@ class Board:
             
             if curr.startswith('F'):
                 possible = possible.intersection({self.F_D})
+                if self.board[adj_v[1][0], adj_v[1][1]].startswith('F'):
+                    possible = set()
 
         elif adj_v[1] in self.locked:
             if curr.startswith('V'):
@@ -256,6 +265,91 @@ class Board:
 
         return [(row, col, piece) for piece in possible]
     
+    def get_island(self, pos):
+        """Devolve a ilha a que a peça pertence ou None caso não pertença a nenhuma."""
+        for island in self.islands:
+            if pos in self.islands[island]:
+                return island
+    
+        return None
+    
+    def count_islands(self):
+        """Conta o número de ilhas."""
+        id = 0
+        self.num_islands = 0
+        self.islands = {}
+
+        for row in range(self.size):
+            for col in range(self.size):
+                islands = set()
+                pos = (row, col)
+                curr = self.get_value(row, col)
+                adj_h = self.adjacent_horizontal_pos(row, col)
+                adj_v = self.adjacent_vertical_pos(row, col)
+                adj_h_i = tuple([self.get_island(temp) for temp in adj_h])
+                adj_v_i = tuple([self.get_island(temp) for temp in adj_v])
+                adj_h_v = tuple([self.get_value(temp[0], temp[1]) for temp in adj_h])
+                adj_v_v = tuple([self.get_value(temp[0], temp[1]) for temp in adj_v])
+                
+                if curr in self.LEFT and adj_h_v[0] != None and adj_h_v[0] in self.RIGHT:
+                    if adj_h_i[0] == None:
+                        islands.add(id)
+                        self.islands[id] = {pos, adj_h[0]}
+                        id += 1
+                        self.num_islands += 1
+                    else:
+                        islands.add(adj_h_i[0])
+
+                if curr in self.TOP and adj_v_v[0] != None and adj_v_v[0] in self.DOWN:
+                    if adj_v_i[0] == None:
+                        islands.add(id)
+                        self.islands[id] = {pos, adj_v[0]}
+                        id += 1
+                        self.num_islands += 1
+                    else:
+                        islands.add(adj_v_i[0])
+
+                if curr in self.DOWN and adj_v_v[1] != None and adj_v_v[1] in self.TOP:
+                    if adj_v_i[1] == None:
+                        islands.add(id)
+                        self.islands[id] = {pos, adj_v[1]}
+                        id += 1
+                        self.num_islands += 1
+                    else:
+                        islands.add(adj_v_i[1])
+
+                if curr in self.RIGHT and adj_h_v[1] != None and adj_h_v[1] in self.LEFT:
+                    if adj_h_i[1] == None:
+                        islands.add(id)
+                        self.islands[id] = {pos, adj_h[1]}
+                        id += 1
+                        self.num_islands += 1
+                    else:
+                        islands.add(adj_h_i[1])
+
+                if len(islands) == 1:
+                    self.islands[islands.pop()].add(pos)
+
+                elif len(islands) == 0 and pos in self.locked:
+                    self.islands[id] = {pos}
+                    id += 1
+                    self.num_islands += 1
+
+                else:
+                    self.merge_islands(pos, islands)
+
+    def merge_islands(self, pos, islands):
+        """Dá merge a duas ou mais ilhas."""
+        new_id = min(islands)
+        islands.remove(new_id)
+
+        for island in islands:
+            self.islands[new_id].update(self.islands[island])
+            del self.islands[island]
+        
+        self.islands[new_id].add(pos)
+        self.num_islands -= len(islands)
+    
     def get_num_connections(self, row, col) -> int:
         """Devolve o número de entradas conectadas da peça dada."""
         curr = self.get_value(row, col)
@@ -277,11 +371,15 @@ class Board:
         """Devolve uma cópia da board."""
         copy = np.array([row.copy() for row in self.board])
 
-        return Board(copy, self.size, self.total_con, self.not_locked.copy(), self.simplified, self.locked.copy())
+        return Board(copy, self.size, self.total_con, self.not_locked.copy(), self.num_islands, self.islands.copy(), \
+                     self.simplified, self.locked.copy())
     
-    def is_objective(self):     #TODO implement to check if it only has 1 island
+    def is_objective(self):     #TODO make it more efficient 
         """Verifica se a board é uma solução."""
-        return (self.total_con - self.num_con) == 0
+        if (self.total_con - self.num_con) == 0:
+            self.count_islands()
+
+        return (self.total_con - self.num_con) == 0 and self.num_islands == 1
 
     def __str__(self):
         return '\n'.join(['\t'.join(row) for row in self.board])
@@ -330,18 +428,14 @@ class PipeMania(Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        #print(state.board.total_con - state.board.num_con)
         return state.board.is_objective()
 
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
-        return node.state.board.total_con - node.state.board.num_con
+        return (node.state.board.total_con - node.state.board.num_con) * node.state.board.num_islands
     
 if __name__ == "__main__":
     board = Board.parse_instance()
     challenge = PipeMania(board)
     final_node = depth_first_tree_search(challenge)
-    #final_node = astar_search(challenge, challenge.h)
-    #final_node = greedy_search(challenge, challenge.h)
-    #final_node = breadth_first_tree_search(challenge)
     print(final_node.state.board)
