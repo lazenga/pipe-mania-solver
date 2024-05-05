@@ -79,30 +79,31 @@ class Board:
         """Simplifica os lados da board."""
         corners = [(0, 0), (0, self.size - 1), (self.size - 1, 0), (self.size - 1, self.size - 1)]
 
-        for corner, (row, col) in enumerate(corners):
-            if self.board[row, col][0] == 'V':
-                value = self.V_DR if corner == 0 else self.V_DL \
-                                    if corner == 1 else self.V_TR if corner == 2 else self.V_TL
-                self.set_value(row, col, value)
-                self.locked.add((row, col))
-                
-        for row in range(self.size):
-            if row == 0 or row == self.size - 1:
-                for col in range(1, self.size - 1):
-                    if self.board[row, col][0] == 'L' or self.board[row, col][0] == 'B':
-                        value = self.L_H if self.board[row, col][0] == 'L' else self.B_D if row == 0 else self.B_T
-                        self.set_value(row, col, value)
-                        self.locked.add((row, col))
-            else:
-                if self.board[row, 0][0] == 'L' or self.board[row, 0][0] == 'B':
-                    value = self.L_V if self.board[row, 0][0] == 'L' else self.B_R
-                    self.set_value(row, 0, value)
-                    self.locked.add((row, 0))
+        if not self.simplified:
+            for corner, (row, col) in enumerate(corners):
+                if self.board[row, col][0] == 'V':
+                    value = self.V_DR if corner == 0 else self.V_DL \
+                                        if corner == 1 else self.V_TR if corner == 2 else self.V_TL
+                    self.set_value(row, col, value)
+                    self.locked.add((row, col))
+                    
+            for row in range(self.size):
+                if row == 0 or row == self.size - 1:
+                    for col in range(1, self.size - 1):
+                        if self.board[row, col][0] == 'L' or self.board[row, col][0] == 'B':
+                            value = self.L_H if self.board[row, col][0] == 'L' else self.B_D if row == 0 else self.B_T
+                            self.set_value(row, col, value)
+                            self.locked.add((row, col))
+                else:
+                    if self.board[row, 0][0] == 'L' or self.board[row, 0][0] == 'B':
+                        value = self.L_V if self.board[row, 0][0] == 'L' else self.B_R
+                        self.set_value(row, 0, value)
+                        self.locked.add((row, 0))
 
-                if self.board[row, self.size - 1][0] == 'L' or self.board[row, self.size - 1][0] == 'B':
-                    value = self.L_V if self.board[row, self.size - 1][0] == 'L' else self.B_L
-                    self.set_value(row, self.size - 1, value)
-                    self.locked.add((row, self.size - 1))
+                    if self.board[row, self.size - 1][0] == 'L' or self.board[row, self.size - 1][0] == 'B':
+                        value = self.L_V if self.board[row, self.size - 1][0] == 'L' else self.B_L
+                        self.set_value(row, self.size - 1, value)
+                        self.locked.add((row, self.size - 1))
         
         modified = True
         while modified:
@@ -406,7 +407,6 @@ class PipeMania(Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
         self.initial = PipeManiaState(board)
-        self.initial.board.simplify_board()
 
     def actions(self, state: PipeManiaState):
         """Retorna uma lista de ações que podem ser executadas a
@@ -428,11 +428,13 @@ class PipeMania(Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
+        state.board.simplify_board()
+
         return state.board.is_objective()
 
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
-        return (node.state.board.total_con - node.state.board.num_con) * node.state.board.num_islands
+        return node.state.board.total_con - node.state.board.num_con
     
 if __name__ == "__main__":
     board = Board.parse_instance()
