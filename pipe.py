@@ -43,7 +43,7 @@ class Board:
     TOP = {V_TL, V_TR, F_T, L_V, B_T, B_R, B_L}
     DOWN = {V_DL, V_DR, F_D, L_V, B_D, B_R, B_L}
     
-    def __init__(self, matrix, size, total_con, not_locked, num_islands = 0, islands = {}, simplified = False, locked = set()) -> None:
+    def __init__(self, matrix, size, total_con, not_locked, num_con = 0, num_islands = 0, islands = {}, simplified = False, locked = set()) -> None:
         self.board = matrix
         self.size = size
         self.locked = locked
@@ -52,7 +52,7 @@ class Board:
         self.simplified = simplified
         self.islands = islands
         self.num_islands = num_islands
-        self.num_con = self.count_connected()
+        self.num_con = num_con
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
@@ -80,6 +80,7 @@ class Board:
         corners = [(0, 0), (0, self.size - 1), (self.size - 1, 0), (self.size - 1, self.size - 1)]
 
         if not self.simplified:
+            self.num_con = self.count_connected()
             for corner, (row, col) in enumerate(corners):
                 if self.board[row, col][0] == 'V':
                     value = self.V_DR if corner == 0 else self.V_DL \
@@ -372,7 +373,7 @@ class Board:
         """Devolve uma cópia da board."""
         copy = np.array([row.copy() for row in self.board])
 
-        return Board(copy, self.size, self.total_con, self.not_locked.copy(), self.num_islands, self.islands.copy(), \
+        return Board(copy, self.size, self.total_con, self.not_locked.copy(), self.num_con, self.num_islands, self.islands.copy(), \
                      self.simplified, self.locked.copy())
     
     def is_objective(self):     #TODO make it more efficient 
