@@ -264,14 +264,14 @@ class Board:
         reverse_direction = {'T': 'D', 'D': 'T', 'L': 'R', 'R': 'L'}
         
         visited = [[False for _ in range(self.size)] for _ in range(self.size)]
-        stack = [(0, 0)]
+        queue = [(0, 0)]
         visited[0][0] = True
         num_visited, valid = 0, True
 
-        while stack:
+        while queue:
             if not valid:
                 break
-            row, col = stack.pop()
+            row, col = queue.pop(0)
             num_visited += 1
             for direction in direction_map[self.get_value(row, col)]:
                 adj_row, adj_col = row + directions[direction][0], col + directions[direction][1]
@@ -279,7 +279,7 @@ class Board:
                     if reverse_direction[direction] in direction_map[self.get_value(adj_row, adj_col)]:
                         if not visited[adj_row][adj_col]:
                             visited[adj_row][adj_col] = True
-                            stack.append((adj_row, adj_col))
+                            queue.append((adj_row, adj_col))
                     else:
                         valid = False
                 else:
@@ -326,14 +326,16 @@ class PipeMania(Problem):
         new_state = PipeManiaState(board)
         new_state.board.set_value(action[0], action[1], action[2])
 
+        if not new_state.board.simplify_board():
+            new_state.board.valid = False
+
         return new_state
 
     def goal_test(self, state: PipeManiaState):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        if not state.board.simplify_board():
-            state.board.valid = False
+        if not state.board.valid:
             return False
         return state.board.is_objective()
 
